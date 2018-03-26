@@ -2,18 +2,25 @@ package com.google.devrel.training.conference.spi;
 
 import static com.google.devrel.training.conference.service.OfyService.ofy;
 
+import com.google.api.server.spi.Constant;
 import com.google.api.server.spi.config.Api;
 import com.google.api.server.spi.config.ApiMethod;
 import com.google.api.server.spi.config.ApiMethod.HttpMethod;
 import javax.inject.Named;
 import javax.xml.bind.Unmarshaller.Listener;
+import com.googlecode.objectify.cmd.Query;
 
+import com.google.appengine.api.memcache.MemcacheService;
+import com.google.appengine.api.memcache.MemcacheServiceFactory;
+import com.google.appengine.api.taskqueue.Queue;
+import com.google.appengine.api.taskqueue.QueueFactory;
 import com.google.api.server.spi.response.ConflictException;
 import com.google.api.server.spi.response.ForbiddenException;
 import com.google.api.server.spi.response.NotFoundException;
 import com.google.api.server.spi.response.UnauthorizedException;
 import com.google.appengine.api.users.User;
 import com.google.devrel.training.conference.Constants;
+import com.google.devrel.training.conference.domain.Announcement;
 import com.google.devrel.training.conference.domain.Conference;
 import com.google.devrel.training.conference.domain.Profile;
 import com.google.devrel.training.conference.form.ConferenceForm;
@@ -37,6 +44,8 @@ import com.googlecode.objectify.cmd.Query;
 @Api(name = "conference", version = "v1", scopes = { Constants.EMAIL_SCOPE }, clientIds = { Constants.WEB_CLIENT_ID,
 		Constants.API_EXPLORER_CLIENT_ID }, description = "API for the Conference Central Backend application.")
 public class ConferenceApi {
+	//Queue queue = QueueFactory.getQueue("SendMail");
+
 
 	/*
 	 * Get the display name from the user's email. For example, if the email is
@@ -169,6 +178,8 @@ public class ConferenceApi {
 	@ApiMethod(name = "createConference", path = "conference", httpMethod = HttpMethod.POST)
 	public Conference createConference(final User user, final ConferenceForm conferenceForm)
 			throws UnauthorizedException {
+		Queue queue = QueueFactory.getQueue("email-queue");
+
 		if (user == null) {
 			throw new UnauthorizedException("Authorization required");
 		}
@@ -367,7 +378,7 @@ public class ConferenceApi {
 						// TODO
 						// Decrease the conference's seatsAvailable
 						// You can use the bookSeats() method on Conference
-						conference.bookSeats(conference.getSeatsAvailable() - 1);
+						conference.bookSeats(conference.getSeatsAvailable()- 1);
 						// TODO
 						// Save the Conference and Profile entities
 
@@ -484,5 +495,19 @@ public class ConferenceApi {
 		profile.unregisterFromConference(websafeConferenceKey);
 		return new WrappedBoolean(true, "User was deleted");
 	}
+
+	@ApiMethod(
+		    name="getAnnouncement",
+		    path = "announcement",
+		    httpMethod = HttpMethod.GET
+		    )
+		    public Announcement getAnnouncement(){
+		    //TODO GET announcement from memcache by key and if it exist return it
+		    MemcacheService memcacheService = MemcacheServiceFactory.getMemcacheService();
+		   
+
+		   
+		    return  (Announcement) memcacheService.get(Constants.MEMCACHE_ANNOUNCEMENTS_KEY);
+		    }
 
 }

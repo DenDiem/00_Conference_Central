@@ -302,6 +302,46 @@ public class ConferenceApi {
 			return reason;
 		}
 	}
+	@ApiMethod(name = "getConferencesToAttend", path = "getConferencesToAttend", httpMethod = HttpMethod.GET)
+	public Collection<Conference> getConferencesToAttend(final User user)
+			throws UnauthorizedException, NotFoundException {
+		// If not signed in, throw a 401 error.
+		if (user == null) {
+			throw new UnauthorizedException("Authorization required");
+		}
+		// TODO
+		// Get the Profile entity for the user
+		Profile profile = getProfile(user);
+		if (profile == null) {
+			throw new NotFoundException("Profile doesn't exist.");
+		}
+
+		// TODO
+		// Get the value of the profile's conferenceKeysToAttend property
+		List<String> keyStringsToAttend = profile.getConferenceKeysToAttend(); // change
+																				// this
+
+		// TODO
+		// Iterate over keyStringsToAttend,
+		// and return a Collection of the
+		// Conference entities that the user has registered to atend
+
+		List<Conference> result = new ArrayList<>(0);
+		List<Key<Conference>>attendKeyList = new ArrayList<>(0);
+		for (String key : keyStringsToAttend) {
+			Key<Conference> k =  Key.create(key);
+			Conference entity = ofy().load().key(k).now();
+			attendKeyList.add(k);
+			result.add(entity);
+		}
+		// To avoid separate datastore gets for each Conference, pre-fetch the
+		// Profiles.
+		ofy().load().keys(attendKeyList);
+		
+	
+
+		return result;
+	}
 
 	/**
 	 * Register to attend the specified Conference.
@@ -317,6 +357,7 @@ public class ConferenceApi {
 	 * @throws NotFoundException
 	 *             when there is no Conference with the given conferenceId.
 	 */
+	
 	@ApiMethod(name = "registerForConference", path = "conference/{websafeConferenceKey}/registration", httpMethod = HttpMethod.POST)
 
 	public WrappedBoolean registerForConference(final User user,
@@ -406,45 +447,19 @@ public class ConferenceApi {
 		return result;
 	}
 
-	/**
-	 * Returns a collection of Conference Object that the user is going to
-	 * attend.
-	 *
-	 * @param user
-	 *            An user who invokes this method, null when the user is not
-	 *            signed in.
-	 * @return a Collection of Conferences that the user is going to attend.
-	 * @throws UnauthorizedException
-	 *             when the User object is null.
-	 */
-	@ApiMethod(name = "getConferencesToAttend", path = "getConferencesToAttend", httpMethod = HttpMethod.GET)
-	public Collection<Conference> getConferencesToAttend(final User user)
-			throws UnauthorizedException, NotFoundException {
-		// If not signed in, throw a 401 error.
-		if (user == null) {
-			throw new UnauthorizedException("Authorization required");
-		}
-		// TODO
-		// Get the Profile entity for the user
-		Profile profile = getProfile(user);
-		if (profile == null) {
-			throw new NotFoundException("Profile doesn't exist.");
-		}
+	@ApiMethod(name = "getConferencesCreated", path = "getConferencesCreated", httpMethod = HttpMethod.POST)
+	public List getConferencesCreated(User u) {
+		
+		
+		// To avoid separate datastore gets for each Conference, pre-fetch the
+		// Profiles.
+		Key<Profile> profileKey = Key.create(Profile.class,u.getUserId());
+		Query query = ofy().load().type(Conference.class).ancestor(profileKey);
+		List<Conference> results = query.list();
 
-		// TODO
-		// Get the value of the profile's conferenceKeysToAttend property
-		List<String> keyStringsToAttend = profile.getConferenceKeysToAttend(); // change
-																				// this
-
-		// TODO
-		// Iterate over keyStringsToAttend,
-		// and return a Collection of the
-		// Conference entities that the user has registered to atend
-		Query<Conference> query = ofy().load().type(Conference.class).ancestor(keyStringsToAttend);
-
-		return query.list();
+		return results;
 	}
-
+	
 	public List<Conference> filterPlayground() {
 		Query<Conference> query = ofy().load().type(Conference.class).order("name");
 
